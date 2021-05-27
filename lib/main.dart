@@ -233,12 +233,9 @@ class _HomePageState extends State<HomePage> {
       "countryCode" : this.countryCode
     };
 
-    print(params);
-
     (APIRequest()).post(url: APIRoutes.CHECK_CREDENTIALS, params: params)
         .timeout(const Duration(seconds: APIRequest.TIMEOUT ))
         .then((res) async{
-          print(res.body);
           var body = jsonDecode(res.body);
           var message = body["message"];
           switch(res.statusCode){
@@ -292,7 +289,6 @@ class _HomePageState extends State<HomePage> {
           setState(() {});
     })
         .catchError((error){
-        print(error);
         setState(() {
           this.errors["others"] = error;
         });
