@@ -1,6 +1,7 @@
 import 'package:ejara_app/api_manager/APIRequest.dart';
 import 'package:ejara_app/api_manager/APIRoutes.dart';
 import 'package:ejara_app/constants/AppColor.dart';
+import 'package:ejara_app/widgets/CustomCountryPicker.dart';
 import 'package:ejara_app/widgets/CustomHeader.dart';
 import 'package:flutter/material.dart';
 
@@ -16,7 +17,6 @@ class App extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Ejara Test',
       theme: ThemeData(
-        primaryColor : Colors.red,
         primarySwatch: Colors.blue,
       ),
       home: HomePage(),
@@ -38,16 +38,19 @@ class _HomePageState extends State<HomePage> {
   String username;
   String email;
   String phone;
-  String phone_prefix = "237";
-  String country_code = "CM";
+  String phonePrefix = "+237";
+  String countryCode = "CM";
   bool loading = false;
-  String error = null;
-  String success = null;
+  String error;
+  String success;
 
   @override
   Widget build(BuildContext context) {
     double width = MediaQuery.of(context).size.width;
     double height = MediaQuery.of(context).size.height;
+    double padding = 20;
+    double lineSpace = 20;
+    double flagWidth = 60;
     return Scaffold(
       body: SingleChildScrollView(
         child:  Container(
@@ -82,7 +85,7 @@ class _HomePageState extends State<HomePage> {
                 ),)
                 : SizedBox(height: 0,),
                 Padding(
-                  padding: EdgeInsets.only(left: 20, right: 20),
+                  padding: EdgeInsets.only(left: padding, right: padding),
                   child: Column(
                     children: <Widget>[
                       TextField(
@@ -94,7 +97,7 @@ class _HomePageState extends State<HomePage> {
                           contentPadding: EdgeInsets.only(left : 10)
                         ),
                       ),
-                      SizedBox(height: 20,),
+                      SizedBox(height: lineSpace,),
                       TextField(
                         onChanged: (String string){
                           this.email = string;
@@ -105,34 +108,48 @@ class _HomePageState extends State<HomePage> {
                           contentPadding: EdgeInsets.only(left : 10)
                         ),
                       ),
-                      SizedBox(height: 30,),
+                      SizedBox(height: lineSpace,),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
-                          TextField(
-                            onChanged: (String string){
-                              this.phone = string;
-                            },
-                            keyboardType: TextInputType.phone,
-                            decoration: InputDecoration(
-                              hintText: "Phone Number",
-                              contentPadding: EdgeInsets.only(left : 10),
-                              prefixIcon: Text(
-                                "+237",
-                                style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 16,
-                                ),
+                          Row(
+                            children: <Widget>[
+                              CustomCountryPicker(
+                                width: flagWidth,
+                                onChanged: (dialCode,code){
+                                  setState(() {
+                                    this.phonePrefix = dialCode;
+                                    this.countryCode = code;
+                                  });
+                                },
                               ),
-                            ),
+                              Container(
+                                width: width-2*padding - 100,
+                                child: TextField(
+                                  onChanged: (String string){
+                                    this.phone = string;
+                                  },
+                                  keyboardType: TextInputType.phone,
+                                  decoration: InputDecoration(
+                                    hintText: "Phone Number",
+                                    contentPadding: EdgeInsets.only(left : 10),
+                                    prefixText: this.phonePrefix,
+                                    prefixStyle: TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 16
+                                    )
+                                  ),
+                                ),
+                              )
+                            ],
                           ),
                           SizedBox(height: 10,),
                           Text("A confirmation code will be send to you."),
                         ],
                       ),
-                      SizedBox(height: 20,),
+                      SizedBox(height: lineSpace,),
                       Container(
-                        width: width - 40,
+                        width: width - padding*2,
                         height: 45,
                         child: FlatButton(
                             onPressed: (){
@@ -151,7 +168,8 @@ class _HomePageState extends State<HomePage> {
                               ),
                             )
                         ),
-                      )
+                      ),
+                      SizedBox(height: 20,),
                     ],
                   ),
                 )
@@ -164,19 +182,18 @@ class _HomePageState extends State<HomePage> {
 
   void check (context) {
     Map<String,dynamic>  params = {
-      "username" : this.username,
-      "email_address" : this.email,
-      "phone_number" : '${this.phone_prefix}${this.phone}',
-      "country_code" : this.country_code
+      "username" : this.username != null ? this.username.trim() : null,
+      "email_address" : this.email != null ? this.email.trim() : null,
+      "phone_number" : '${this.phonePrefix}${this.phone.trim()}',
+      "countryCode" : this.countryCode.trim()
     };
     setState(() {
       this.loading = true;
       this.error = null;
       this.success = null;
     });
-    print(APIRoutes.CHECK_CREDENTIALS);
     (APIRequest()).post(url: APIRoutes.CHECK_CREDENTIALS, params: params)
-        //.timeout(const Duration(seconds: APIRequest.TIMEOUT ))
+        .timeout(const Duration(seconds: APIRequest.TIMEOUT ))
         .then((res) async{
           print(res.statusCode);
       var error;
