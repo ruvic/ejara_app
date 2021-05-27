@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:ejara_app/api_manager/APIRequest.dart';
 import 'package:ejara_app/api_manager/APIRoutes.dart';
 import 'package:ejara_app/constants/AppColor.dart';
@@ -41,8 +43,20 @@ class _HomePageState extends State<HomePage> {
   String phonePrefix = "+237";
   String countryCode = "CM";
   bool loading = false;
-  String error;
+  Map<String, String> errors = {
+    "username" : null,
+    "email_address" : null,
+    "phone_number" : null,
+    "others" : null,
+  };
+
   String success;
+
+  @override
+  void initState() {
+    super.initState();
+    this.init();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,8 +82,8 @@ class _HomePageState extends State<HomePage> {
                   fontWeight: FontWeight.bold
                 ),)
                 : SizedBox(height: 0,),
-                (this.error != null)?
-                Text(this.error,
+                (this.errors["others"] != null)?
+                Text(this.errors["others"],
                 style: TextStyle(
                   color: Colors.red,
                   fontSize: 14,
@@ -78,10 +92,11 @@ class _HomePageState extends State<HomePage> {
                 : SizedBox(height: 0,),
                 (this.success != null)?
                 Text(this.success,
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.green,
                   fontSize: 14,
-                  fontWeight: FontWeight.bold
+                  fontWeight: FontWeight.bold,
                 ),)
                 : SizedBox(height: 0,),
                 Padding(
@@ -94,6 +109,7 @@ class _HomePageState extends State<HomePage> {
                         },
                         decoration: InputDecoration(
                           hintText: "Username",
+                          errorText: this.errors["username"],
                           contentPadding: EdgeInsets.only(left : 10)
                         ),
                       ),
@@ -105,6 +121,7 @@ class _HomePageState extends State<HomePage> {
                         keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
                           hintText: "Email",
+                          errorText: this.errors["email_address"],
                           contentPadding: EdgeInsets.only(left : 10)
                         ),
                       ),
@@ -132,6 +149,7 @@ class _HomePageState extends State<HomePage> {
                                   keyboardType: TextInputType.phone,
                                   decoration: InputDecoration(
                                     hintText: "Phone Number",
+                                    errorText: this.errors["phone_number"],
                                     contentPadding: EdgeInsets.only(left : 10),
                                     prefixText: this.phonePrefix,
                                     prefixStyle: TextStyle(
@@ -181,45 +199,122 @@ class _HomePageState extends State<HomePage> {
   }
 
   void check (context) {
-    Map<String,dynamic>  params = {
-      "username" : this.username != null ? this.username.trim() : null,
-      "email_address" : this.email != null ? this.email.trim() : null,
-      "phone_number" : '${this.phonePrefix}${this.phone.trim()}',
-      "countryCode" : this.countryCode.trim()
-    };
+
     setState(() {
-      this.loading = true;
-      this.error = null;
-      this.success = null;
+      this.init();
     });
+
+    //check if fields are not empty
+    bool flag = false;
+    if(isEmptyField(this.username)){
+      flag = true;
+      this.errors["username"] = "Username is required";
+    }
+    if(isEmptyField(this.email)){
+      flag = true;
+      this.errors["email_address"] = "Email is required";
+    }
+    if(isEmptyField(this.phone)){
+      flag = true;
+      this.errors["phone_number"] = "Phone number is required";
+    }
+
+    if(flag){
+      setState(() {
+        this.loading = false;
+      });
+      return;
+    }
+
+    Map<String,dynamic>  params = {
+      "username" : this.username.trim(),
+      "email_address" : this.email.trim(),
+      "phone_number" : this.phone.trim(),
+      "countryCode" : this.countryCode
+    };
+
+    print(params);
+
     (APIRequest()).post(url: APIRoutes.CHECK_CREDENTIALS, params: params)
         .timeout(const Duration(seconds: APIRequest.TIMEOUT ))
         .then((res) async{
-          print(res.statusCode);
-      var error;
-      var success;
-      switch(res.statusCode){
-        case 200 :
-          success = "Everything is Ok!";
-          break;
-        default :
-          error = res.headers["x-exit-description"] != null ? res.headers["x-exit-description"]
-              : "Ooops An error occur";
-          break;
-      }
-      setState(() {
-        this.error = error;
-        this.success = success;
-      });
+          print(res.body);
+          var body = jsonDecode(res.body);
+          var message = body["message"];
+          switch(res.statusCode){
+            case 200 :
+              this.success = message;
+              break;
+            case 404 :
+              switch(res.headers["x-exit"]){
+                case "invalidEmail":
+                  this.errors["email_address"] = message;
+                  break;
+                case "usernameAlreadyInUse":
+                  this.errors["username"] = message;
+                  break;
+              }
+              break;
+            case 409 :
+              switch(res.headers["x-exit"]){
+                case "emailAlreadyInUse":
+                  this.errors["email_address"] = message;
+                  break;
+                case "phoneAlreadyInUse":
+                  this.errors["phone_number"] = message;
+                  break;
+                case "usernameUnavailable":
+                  this.errors["username"] = message;
+                  break;
+              }
+              break;
+            case 400 :
+              switch(res.headers["x-exit"]){
+                case "invalidPhoneNumber":
+                  this.errors["phone_number"] = message;
+                  break;
+                case "invalidEmail":
+                  this.errors["email_address"] = message;
+                  break;
+              }
+              break;
+            case 500 :
+              switch(res.headers["x-exit"]){
+                case "serverError":
+                  this.errors["others"] = message;
+                  break;
+              }
+              break;
+            default :
+              this.errors["others"] = res.body;
+              break;
+          }
+          setState(() {});
     })
         .catchError((error){
         print(error);
+        setState(() {
+          this.errors["others"] = error;
+        });
     })
     .then((resv){
       setState(() {
         this.loading = false;
       });
     });
+  }
+
+  bool isEmptyField(String value) => value == null || value.isEmpty;
+
+  void init(){
+    this.errors = {
+      "username" : null,
+      "email" : null,
+      "phone_number" : null,
+      "others" : null,
+    };
+    this.loading = true;
+    this.success = null;
   }
 
 }
