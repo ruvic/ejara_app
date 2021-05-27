@@ -174,6 +174,7 @@ class _HomePageState extends State<HomePage> {
       this.error = null;
       this.success = null;
     });
+    print(APIRoutes.CHECK_CREDENTIALS);
     (APIRequest()).post(url: APIRoutes.CHECK_CREDENTIALS, params: params)
         //.timeout(const Duration(seconds: APIRequest.TIMEOUT ))
         .then((res) async{

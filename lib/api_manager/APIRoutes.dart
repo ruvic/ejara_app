@@ -1,7 +1,7 @@
 
 class APIRoutes{
 
-  static const API_URL = "https://sandbox.nellys-coin.ejaraapis.xyz/";
+  static const API_URL = "https://sandbox.nellys-coin.ejaraapis.xyz";
   static const API_PORT = null;
   static const ROOT = API_URL + (API_PORT!=null?":$API_PORT":"")  + "/api";
 
